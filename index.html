@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HaxBall Rank</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+    body {
+        background:#1a2a32; display:flex; justify-content:center; align-items:center;
+        min-height:100vh; font-family:'Segoe UI',Tahoma,sans-serif; overflow:hidden;
+        touch-action:manipulation;
+    }
+
+    /* ===== MÀN HÌNH CHỌN THIẾT BỊ ===== */
+    .select-screen {
+        position:fixed; inset:0; z-index:100;
+        background:linear-gradient(135deg,#1a2a32 0%,#2c3e50 100%);
+        display:flex; flex-direction:column; justify-content:center; align-items:center;
+        padding:20px; text-align:center; overflow-y:auto;
+    }
+    .select-screen h1 {
+        color:#f1c40f; font-size:clamp(28px,6vw,52px); margin-bottom:10px;
+        text-shadow:0 4px 10px rgba(0,0,0,0.6); letter-spacing:3px;
+    }
+    .select-screen p { color:#bdc3c7; font-size:clamp(14px,3vw,20px); margin-bottom:30px; }
+    .device-options { display:flex; gap:25px; flex-wrap:wrap; justify-content:center; }
+    .device-btn {
+        background:#2c3e50; border:3px solid #34495e; border-radius:24px;
+        padding:25px 35px; color:#ecf0f1; cursor:pointer; transition:0.15s;
+        display:flex; flex-direction:column; align-items:center; gap:10px;
+        min-width:170px; box-shadow:0 10px 0 #1a252f,0 15px 25px rgba(0,0,0,0.4);
+    }
+    .device-btn:hover,.device-btn:active {
+        transform:translateY(4px); box-shadow:0 6px 0 #1a252f,0 10px 20px rgba(0,0,0,0.4);
+        border-color:#f1c40f;
+    }
+    .device-btn .icon { font-size:50px; line-height:1; }
+    .device-btn .label { font-size:20px; font-weight:700; letter-spacing:1px; }
+    .device-btn .hint { font-size:12px; color:#95a5a6; }
+
+    /* ===== MENU CHÍNH ===== */
+    .menu-screen {
+        position:fixed; inset:0; z-index:90;
+        background:linear-gradient(135deg,#1a2a32 0%,#2c3e50 100%);
+        display:none; flex-direction:column; align-items:center; justify-content:center;
+        padding:20px; overflow-y:auto;
+    }
+    .menu-screen.active { display:flex; }
+    .menu-screen h2 {
+        color:#f1c40f; font-size:clamp(22px,5vw,38px); margin-bottom:8px;
+        text-shadow:0 3px 8px rgba(0,0,0,0.5); letter-spacing:2px;
+    }
+    .rank-badge {
+        display:flex; align-items:center; gap:10px; background:#1e2b36;
+        padding:10px 22px; border-radius:50px; margin-bottom:6px;
+        box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .rank-badge .rank-icon { font-size:30px; }
+    .rank-badge .rank-name { color:#f1c40f; font-weight:700; font-size:18px; letter-spacing:1px; }
+    .rank-badge .rank-elo { color:#95a5a6; font-size:13px; }
+    .coach-name {
+        color:#ecf0f1; font-size:16px; margin-bottom:20px; font-weight:600;
+        background:#1e2b36; padding:6px 20px; border-radius:30px;
+    }
+    .coach-name span { color:#f1c40f; }
+
+    .menu-section-title {
+        color:#95a5a6; font-size:13px; letter-spacing:3px; margin:15px 0 8px;
+        font-weight:600;
+    }
+    .mode-list { display:flex; flex-direction:column; gap:10px; width:100%; max-width:380px; }
+    .mode-btn {
+        background:#2c3e50; border:2px solid #34495e; border-radius:16px;
+        padding:14px 18px; color:#ecf0f1; cursor:pointer; text-align:left;
+        display:flex; align-items:center; gap:14px; transition:0.12s;
+        box-shadow:0 6px 0 #1a252f,0 8px 15px rgba(0,0,0,0.3);
+    }
+    .mode-btn:hover,.mode-btn:active {
+        transform:translateY(3px); box-shadow:0 3px 0 #1a252f; border-color:#f1c40f;
+    }
+    .mode-btn .m-icon { font-size:32px; }
+    .mode-btn .m-info { flex:1; }
+    .mode-btn .m-title { font-size:16px; font-weight:700; letter-spacing:0.5px; }
+    .mode-btn .m-desc { font-size:11px; color:#95a5a6; margin-top:2px; }
+    .menu-footer { margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+    .footer-btn {
+        background:#34495e; border:none; color:#ecf0f1; font-weight:600;
+        padding:10px 18px; border-radius:30px; font-size:13px; cursor:pointer;
+        box-shadow:0 4px 0 #1a252f;
+    }
+    .footer-btn:active { transform:translateY(4px); box-shadow:0 1px 0 #1a252f; }
+
+    /* ===== POPUP ===== */
+    .popup-overlay {
+        position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.75);
+        display:none; justify-content:center; align-items:center; padding:20px;
+    }
+    .popup-overlay.active { display:flex; }
+    .popup-box {
+        background:#2c3e50; border-radius:20px; padding:25px; max-width:400px; width:100%;
+        box-shadow:0 20px 50px rgba(0,0,0,0.6); border:2px solid #34495e;
+    }
+    .popup-box h3 { color:#f1c40f; font-size:20px; margin-bottom:12px; text-align:center; }
+    .popup-box p { color:#bdc3c7; font-size:13px; margin-bottom:15px; text-align:center; }
+    .popup-box input {
+        width:100%; padding:12px 16px; border-radius:12px; border:2px solid #34495e;
+        background:#1e2b36; color:#ecf0f1; font-size:15px; font-weight:600;
+        outline:none; margin-bottom:15px;
+    }
+    .popup-box input:focus { border-color:#f1c40f; }
+    .popup-actions { display:flex; gap:10px; }
+    .popup-actions button {
+        flex:1; padding:10px; border-radius:12px; border:none; font-weight:700;
+        font-size:14px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,0.3);
+    }
+    .btn-confirm { background:#27ae60; color:white; }
+    .btn-cancel { background:#7f8c8d; color:white; }
+    .popup-actions button:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.3); }
+
+    /* ===== GAME ===== */
+    .game-wrapper {
+        display:none; flex-direction:column; align-items:center;
+        width:100%; height:100vh; padding:10px; justify-content:center;
+    }
+    .game-wrapper.active { display:flex; }
+    .game-container {
+        background:#2c3e50; padding:12px; border-radius:20px;
+        box-shadow:0 20px 35px rgba(0,0,0,0.6);
+        display:flex; flex-direction:column; align-items:center; max-width:100%;
+    }
+    canvas {
+        display:block; border-radius:14px;
+        box-shadow:inset 0 0 20px rgba(0,0,0,0.5),0 10px 20px rgba(0,0,0,0.3);
+        background:#3a5f4e; cursor:none; max-width:100%; height:auto; touch-action:none;
+    }
+    .info {
+        display:flex; justify-content:space-between; align-items:center;
+        margin-top:10px; color:#ecf0f1; padding:0 5px; font-weight:500;
+        text-shadow:1px 1px 2px black; width:100%; gap:8px; flex-wrap:wrap;
+    }
+    .score {
+        font-size:20px; font-weight:700; background:#1e2b36; padding:5px 14px;
+        border-radius:40px; letter-spacing:2px; box-shadow:inset 0 2px 5px rgba(0,0,0,0.5);
+    }
+    .opponent-tag { font-size:12px; color:#95a5a6; margin-left:5px; }
+    .controls-hint { display:flex; gap:6px; font-size:11px; flex-wrap:wrap; justify-content:center; }
+    .controls-hint span {
+        background:#1e2b36; padding:3px 9px; border-radius:30px;
+        box-shadow:inset 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .reset-btn {
+        background:#e67e22; border:none; color:white; font-weight:bold;
+        padding:7px 16px; border-radius:30px; font-size:14px; cursor:pointer;
+        box-shadow:0 5px 0 #b85e0e,0 6px 10px rgba(0,0,0,0.4);
+        transition:0.05s linear; letter-spacing:1px;
+    }
+    .reset-btn:active { transform:translateY(5px); box-shadow:0 2px 0 #b85e0e; }
+    .back-btn {
+        background:#7f8c8d; border:none; color:white; font-weight:bold;
+        padding:7px 14px; border-radius:30px; font-size:12px; cursor:pointer;
+        box-shadow:0 4px 0 #5d6d6e; margin-left:5px;
+    }
+    .back-btn:active { transform:translateY(4px); box-shadow:0 2px 0 #5d6d6e; }
+    .note { color:#bdc3c7; font-size:12px; margin-top:8px; text-align:center; padding:0 10px; }
+
+    /* ===== JOYSTICK ===== */
+    .joystick-zone {
+        display:none; position:fixed; bottom:18px; left:0; right:0;
+        justify-content:space-between; padding:0 18px; z-index:50; pointer-events:none;
+    }
+    .joystick-zone.active { display:flex; }
+    .joystick-base {
+        width:110px; height:110px; border-radius:50%;
+        background:rgba(255,255,255,0.1); border:3px solid rgba(255,255,255,0.3);
+        position:relative; pointer-events:auto; touch-action:none;
+        box-shadow:inset 0 0 20px rgba(0,0,0,0.3);
+    }
+    .joystick-knob {
+        width:50px; height:50px; border-radius:50%;
+        background:rgba(241,196,15,0.85); border:3px solid #fff;
+        position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+        box-shadow:0 4px 12px rgba(0,0,0,0.4); pointer-events:none;
+    }
+    .joystick-label {
+        position:absolute; bottom:-20px; left:50%; transform:translateX(-50%);
+        color:rgba(255,255,255,0.6); font-size:10px; white-space:nowrap; font-weight:600;
+    }
+    .action-zone { display:flex; align-items:flex-end; gap:8px; pointer-events:auto; flex-wrap:wrap; justify-content:flex-end; max-width:200px; }
+    .action-btn {
+        width:60px; height:60px; border-radius:50%;
+        border:3px solid rgba(255,255,255,0.6); color:white;
+        font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+        text-align:center; touch-action:none; box-shadow:0 5px 12px rgba(0,0,0,0.4);
+        line-height:1.1; flex-direction:column;
+    }
+    .action-btn:active { transform:scale(0.93); }
+    .btn-sprint { background:rgba(241,196,15,0.8); }
+    .btn-shoot  { background:rgba(231,76,60,0.85); }
+    .btn-pass   { background:rgba(46,204,113,0.85); }
+    .btn-tactic { background:rgba(155,89,182,0.85); width:52px; height:52px; font-size:9px; }
+
+    @media (max-width:600px) {
+        .game-container { padding:6px; border-radius:14px; }
+        .score { font-size:16px; padding:4px 10px; }
+        .controls-hint { display:none !important; }
+        .note { display:none; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ========== CHỌN THIẾT BỊ ========== -->
+<div class="select-screen" id="selectScreen">
+    <h1>⚽ HAXBALL RANK ⚽</h1>
+    <p>Chọn thiết bị để chơi</p>
+    <div class="device-options">
+        <div class="device-btn" id="chooseMobile">
+            <div class="icon">📱</div>
+            <div class="label">ĐIỆN THOẠI</div>
+            <div class="hint">Chạy chậm như Roblox</div>
+        </div>
+        <div class="device-btn" id="choosePC">
+            <div class="icon">💻</div>
+            <div class="label">MÁY TÍNH</div>
+            <div class="hint">Bàn phím + chuột</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MENU CHÍNH ========== -->
+<div class="menu-screen" id="menuScreen">
+    <h2>🏆 SẢNH CHỜ 🏆</h2>
+    <div class="rank-badge" id="rankBadge">
+        <span class="rank-icon" id="rankIcon">🥉</span>
+        <div>
+            <div class="rank-name" id="rankName">ĐỒNG</div>
+            <div class="rank-elo" id="rankElo">0 ELO</div>
+        </div>
+    </div>
+    <div class="coach-name">HLV: <span id="coachDisplay">Chưa đặt tên</span></div>
+
+    <div class="menu-section-title">CHỌN CHẾ ĐỘ</div>
+    <div class="mode-list">
+        <div class="mode-btn" id="modeRanked">
+            <span class="m-icon">🏅</span>
+            <div class="m-info">
+                <div class="m-title">ĐẤU RANK</div>
+                <div class="m-desc">Đấu với bot theo rank của bạn • Có thắng/thua ELO</div>
+            </div>
+        </div>
+        <div class="mode-btn" id="modeNormal">
+            <span class="m-icon">🎮</span>
+            <div class="m-info">
+                <div class="m-title">ĐẤU THƯỜNG</div>
+                <div class="m-desc">Đấu với bot hoặc người thật • Không ảnh hưởng rank</div>
+            </div>
+        </div>
+        <div class="mode-btn" id="modeOnline">
+            <span class="m-icon">🌐</span>
+            <div class="m-info">
+                <div class="m-title">ĐẤU ONLINE</div>
+                <div class="m-desc">Realtime với người chơi khác (cùng máy)</div>
+            </div>
+        </div>
+        <div class="mode-btn" id="modeRankInfo">
+            <span class="m-icon">📊</span>
+            <div class="m-info">
+                <div class="m-title">BẢNG RANK</div>
+                <div class="m-desc">Xem tất cả rank và thông tin reset tháng</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="menu-footer">
+        <button class="footer-btn" id="changeNameBtn">✏️ Đổi tên HLV</button>
+        <button class="footer-btn" id="changeDeviceBtn">🔄 Đổi thiết bị</button>
+    </div>
+</div>
+
+<!-- ========== GAME ========== -->
+<div class="game-wrapper" id="gameWrapper">
+    <div class="game-container">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div class="info">
+            <div>
+                <span class="score" id="scoreDisplay">0 - 0</span>
+                <span class="opponent-tag" id="opponentTag"></span>
+            </div>
+            <div class="controls-hint" id="controlsHint">
+                <span>WASD Di chuyển</span>
+                <span>SPACE Sút</span>
+                <span>E Chuyền</span>
+                <span>Q Chiến thuật</span>
+            </div>
+            <div>
+                <button class="reset-btn" id="resetBtn">🔄 ĐÁ LẠI</button>
+                <button class="back-btn" id="backBtn">↩ MENU</button>
+            </div>
+        </div>
+        <div class="note" id="noteText"></div>
+    </div>
+</div>
+
+<!-- ========== JOYSTICK ========== -->
+<div class="joystick-zone" id="joystickZone">
+    <div class="joystick-base" id="joystickBase">
+        <div class="joystick-knob" id="joystickKnob"></div>
+        <div class="joystick-label">DI CHUYỂN</div>
+    </div>
+    <div class="action-zone">
+        <div class="action-btn btn-tactic" id="tacticBtn">CHIẾN<br>THUẬT</div>
+        <div class="action-btn btn-pass"   id="passBtn">CHUYỀN</div>
+        <div class="action-btn btn-shoot"  id="shootBtn">SÚT</div>
+        <div class="action-btn btn-sprint" id="sprintBtn">NHANH</div>
+    </div>
+</div>
+
+<!-- ========== POPUP ĐẶT TÊN ========== -->
+<div class="popup-overlay" id="popupName">
+    <div class="popup-box">
+        <h3>✏️ ĐẶT TÊN HUẤN LUYỆN VIÊN</h3>
+        <p>Bạn chỉ được đặt tên <b>1 lần</b>. Muốn đổi phải chờ sự kiện đặc biệt!</p>
+        <input type="text" id="nameInput" maxlength="20" placeholder="Nhập tên của bạn..." />
+        <div class="popup-actions">
+            <button class="btn-cancel" id="cancelNameBtn">Hủy</button>
+            <button class="btn-confirm" id="confirmNameBtn">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== POPUP BẢNG RANK ========== -->
+<div class="popup-overlay" id="popupRankInfo">
+    <div class="popup-box">
+        <h3>📊 BẢNG RANK HAXBALL</h3>
+        <div id="rankListContainer" style="max-height:300px; overflow-y:auto; margin-bottom:15px;"></div>
+        <p id="resetInfo" style="color:#f39c12; font-weight:600;"></p>
+        <div class="popup-actions">
+            <button class="btn-confirm" id="closeRankInfoBtn">Đóng</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    // ============================================
+    //  HỆ THỐNG RANK
+    // ============================================
+    const RANKS = [
+        { name:'ĐỒNG',        icon:'🥉', elo:0,    color:'#cd7f32' },
+        { name:'BẠC',         icon:'🥈', elo:400,  color:'#bdc3c7' },
+        { name:'VÀNG',        icon:'🥇', elo:800,  color:'#f1c40f' },
+        { name:'BẠCH KIM',    icon:'💎', elo:1200, color:'#5dade2' },
+        { name:'SAO BĂNG',    icon:'⭐', elo:1600, color:'#9b59b6' },
+        { name:'THÁCH ĐẤU',   icon:'👑', elo:2000, color:'#e74c3c' }
+    ];
+
+    function getRankFromElo(elo) {
+        let r = RANKS[0];
+        for (const rank of RANKS) {
+            if (elo >= rank.elo) r = rank;
+        }
+        return r;
+    }
+
+    // ============================================
+    //  LƯU TRỮ (localStorage)
+    // ============================================
+    const STORAGE_KEY = 'haxball_rank_data';
+
+    function loadData() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch(e) {}
+        return {
+            coachName: '',
+            elo: 0,
+            wins: 0,
+            losses: 0,
+            lastResetMonth: new Date().getMonth() + '-' + new Date().getFullYear(),
+            nameChangeAllowed: true,
+            lastEvent: ''
+        };
+    }
+
+    function saveData(data) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+    }
+
+    // Kiểm tra reset rank mỗi tháng
+    function checkMonthlyReset(data) {
+        const now = new Date();
+        const currentMonth = now.getMonth() + '-' + now.getFullYear();
+        if (data.lastResetMonth !== currentMonth) {
+            // Reset rank về Đồng, elo = 0
+            data.elo = 0;
+            data.wins = 0;
+            data.losses = 0;
+            data.lastResetMonth = currentMonth;
+            saveData(data);
+            return true;
+        }
+        return false;
+    }
+
+    let playerData = loadData();
+    const wasReset = checkMonthlyReset(playerData);
+
+    // ============================================
+    //  DOM REFS
+    // ============================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const selectScreen = document.getElementById('selectScreen');
+    const menuScreen = document.getElementById('menuScreen');
+    const gameWrapper = document.getElementById('gameWrapper');
+    const joystickZone = document.getElementById('joystickZone');
+    const controlsHint = document.getElementById('controlsHint');
+    const noteText = document.getElementById('noteText');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const opponentTag = document.getElementById('opponentTag');
+    const joystickBase = document.getElementById('joystickBase');
+    const joystickKnob = document.getElementById('joystickKnob');
+    const sprintBtn = document.getElementById('sprintBtn');
+    const shootBtn  = document.getElementById('shootBtn');
+    const passBtn   = document.getElementById('passBtn');
+    const tacticBtn = document.getElementById('tacticBtn');
+    const popupName = document.getElementById('popupName');
+    const nameInput = document.getElementById('nameInput');
+    const popupRankInfo = document.getElementById('popupRankInfo');
+    const rankListContainer = document.getElementById('rankListContainer');
+    const resetInfo = document.getElementById('resetInfo');
+
+    // Cập nhật UI menu
+    function updateMenuUI() {
+        const rank = getRankFromElo(playerData.elo);
+        document.getElementById('rankIcon').textContent = rank.icon;
+        document.getElementById('rankName').textContent = rank.name;
+        document.getElementById('rankName').style.color = rank.color;
+        document.getElementById('rankElo').textContent = playerData.elo + ' ELO • ' +
+            playerData.wins + 'W / ' + playerData.losses + 'L';
+        document.getElementById('coachDisplay').textContent = playerData.coachName || 'Chưa đặt tên';
+    }
+
+    // Hiển thị popup đặt tên nếu chưa có
+    function promptNameIfNeeded() {
+        if (!playerData.coachName) {
+            popupName.classList.add('active');
+            nameInput.value = '';
+            nameInput.focus();
+        }
+    }
+
+    // ============================================
+    //  CHỌN THIẾT BỊ
+    // ============================================
+    let deviceMode = 'pc';
+
+    function startDevice(mode) {
+        deviceMode = mode;
+        selectScreen.style.display = 'none';
+        menuScreen.classList.add('active');
+        updateMenuUI();
+        if (wasReset) {
+            setTimeout(() => alert('🔄 Đầu tháng mới! Rank đã được reset về ĐỒNG.'), 300);
+        }
+        promptNameIfNeeded();
+    }
+
+    document.getElementById('chooseMobile').addEventListener('click', () => startDevice('mobile'));
+    document.getElementById('choosePC').addEventListener('click', () => startDevice('pc'));
+
+    // ============================================
+    //  POPUP ĐẶT TÊN
+    // ============================================
+    document.getElementById('confirmNameBtn').addEventListener('click', () => {
+        const name = nameInput.value.trim();
+        if (name.length < 2) { alert('Tên phải có ít nhất 2 ký tự!'); return; }
+        playerData.coachName = name;
+        playerData.nameChangeAllowed = false;
+        saveData(playerData);
+        popupName.classList.remove('active');
+        updateMenuUI();
+        alert('✅ Đã đặt tên HLV: ' + name + '\nBạn chỉ có thể đổi tên khi có sự kiện đặc biệt!');
+    });
+    document.getElementById('cancelNameBtn').addEventListener('click', () => {
+        if (!playerData.coachName) { alert('Bạn phải đặt tên để tiếp tục chơi!'); return; }
+        popupName.classList.remove('active');
+    });
+
+    document.getElementById('changeNameBtn').addEventListener('click', () => {
+        if (playerData.nameChangeAllowed) {
+            popupName.classList.add('active');
+        } else {
+            alert('🔒 Bạn đã đặt tên rồi!\nHãy chờ sự kiện đặc biệt để đổi tên.');
+        }
+    });
+
+    // ============================================
+    //  POPUP BẢNG RANK
+    // ============================================
+    document.getElementById('modeRankInfo').addEventListener('click', () => {
+        let html = '';
+        RANKS.forEach((r, i) => {
+            const isCurrent = getRankFromElo(playerData.elo).name === r.name;
+            html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:5px;border-radius:10px;background:${isCurrent?'#1e2b36':'#243342'};border:2px solid ${isCurrent?r.color:'transparent'};">
+                <span style="font-size:22px;">${r.icon}</span>
+                <div style="flex:1;">
+                    <div style="color:${r.color};font-weight:700;font-size:14px;">${r.name}</div>
+                    <div style="color:#95a5a6;font-size:11px;">Từ ${r.elo} ELO</div>
+                </div>
+                ${isCurrent?'<span style="color:#f1c40f;font-size:12px;font-weight:700;">← BẠN</span>':''}
+            </div>`;
+        });
+        rankListContainer.innerHTML = html;
+        const now = new Date();
+        const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1);
+        const daysLeft = Math.ceil((nextMonth - now) / (1000*60*60*24));
+        resetInfo.textContent = '🔄 Rank sẽ reset vào ngày 1/' + (now.getMonth()+2) + '/' + (now.getMonth()===11?now.getFullYear()+1:now.getFullYear()) + ' (còn ' + daysLeft + ' ngày)';
+        popupRankInfo.classList.add('active');
+    });
+    document.getElementById('closeRankInfoBtn').addEventListener('click', () => {
+        popupRankInfo.classList.remove('active');
+    });
+
+    // ============================================
+    //  CHẾ ĐỘ CHƠI
+    // ============================================
+    let currentMode = 'normal'; // 'ranked' | 'normal' | 'online'
+
+    document.getElementById('modeRanked').addEventListener('click', () => {
+        if (!playerData.coachName) { promptNameIfNeeded(); return; }
+        currentMode = 'ranked';
+        startGame();
+    });
+    document.getElementById('modeNormal').addEventListener('click', () => {
+        if (!playerData.coachName) { promptNameIfNeeded(); return; }
+        currentMode = 'normal';
+        startGame();
+    });
+    document.getElementById('modeOnline').addEventListener('click', () => {
+        if (!playerData.coachName) { promptNameIfNeeded(); return; }
+        currentMode = 'online';
+        startGame();
+    });
+
+    // ============================================
+    //  BIẾN GAME
+    // ============================================
+    const W = canvas.width, H = canvas.height;
+    const FIELD_PADDING = 30;
+    const LEFT = FIELD_PADDING, RIGHT = W - FIELD_PADDING;
+    const TOP = FIELD_PADDING, BOTTOM = H - FIELD_PADDING;
+    const GOAL_WIDTH = 150, GOAL_DEPTH = 25;
+    const GOAL_TOP = (H - GOAL_WIDTH) / 2;
+    const GOAL_BOTTOM = (H + GOAL_WIDTH) / 2;
+
+    const player = { x:250, y:H/2, vx:0, vy:0, radius:18, mass:2.5, color:'#e74c3c', friction:0.92, maxSpeed:9 };
+    const enemy  = { x:750, y:H/2, vx:0, vy:0, radius:18, mass:2.5, color:'#3498db', friction:0.92, maxSpeed:7 };
+    const ball   = { x:W/2, y:H/2, vx:0, vy:0, radius:12, mass:0.8, color:'#f1c40f', friction:0.985, maxSpeed:18 };
+
+    let scoreRed = 0, scoreBlue = 0;
+    let goalCooldown = 0, goalMessage = '';
+    let matchEnded = false;
+
+    // Trạng thái hành động
+    let sprintHeld = false;
+    let shootCooldown = 0, passCooldown = 0;
+    let tacticActive = 0, tacticType = 0, tacticDisplay = '';
+
+    // Mobile: tốc độ chậm như Roblox
+    const MOBILE_SPEED_MULT = 0.6; // chậm 60%
+
+    // Input
+    const keys = { w:false, a:false, s:false, d:false,
+                   arrowup:false, arrowleft:false, arrowdown:false, arrowright:false };
+    let joystickActive = false;
+    let joystickVector = { x:0, y:0 };
+
+    // ============================================
+    //  TIỆN ÍCH VẬT LÝ
+    // ============================================
+    function limitSpeed(obj, maxSpeed) {
+        const sp = Math.hypot(obj.vx, obj.vy);
+        if (sp > maxSpeed) { obj.vx = (obj.vx/sp)*maxSpeed; obj.vy = (obj.vy/sp)*maxSpeed; }
+    }
+
+    function resolveCollision(o1, o2, e = 0.85) {
+        const dx = o2.x - o1.x, dy = o2.y - o1.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = o1.radius + o2.radius;
+        if (dist === 0 || dist >= minDist) return;
+        const nx = dx/dist, ny = dy/dist;
+        const overlap = minDist - dist;
+        const tm = o1.mass + o2.mass;
+        const r1 = o2.mass/tm, r2 = o1.mass/tm;
+        o1.x -= nx*overlap*r1; o1.y -= ny*overlap*r1;
+        o2.x += nx*overlap*r2; o2.y += ny*overlap*r2;
+        const dvx = o2.vx - o1.vx, dvy = o2.vy - o1.vy;
+        const vn = dvx*nx + dvy*ny;
+        if (vn > 0) return;
+        const imp = -(1+e)*vn / (1/o1.mass + 1/o2.mass);
+        const ix = imp*nx, iy = imp*ny;
+        o1.vx -= ix/o1.mass; o1.vy -= iy/o1.mass;
+        o2.vx += ix/o2.mass; o2.vy += iy/o2.mass;
+    }
+
+    function updatePhysics(obj, friction, maxSpeed) {
+        obj.x += obj.vx; obj.y += obj.vy;
+        obj.vx *= friction; obj.vy *= friction;
+        if (Math.abs(obj.vx) < 0.02) obj.vx = 0;
+        if (Math.abs(obj.vy) < 0.02) obj.vy = 0;
+        limitSpeed(obj, maxSpeed);
+    }
+
+    function resetPositions() {
+        ball.x = W/2; ball.y = H/2; ball.vx = 0; ball.vy = 0;
+        player.x = 250; player.y = H/2; player.vx = 0; player.vy = 0;
+        enemy.x = 750; enemy.y = H/2; enemy.vx = 0; enemy.vy = 0;
+    }
+
+    function resetFullMatch() {
+        scoreRed = 0; scoreBlue = 0;
+        scoreDisplay.textContent = '0 - 0';
+        matchEnded = false;
+        goalCooldown = 0; goalMessage = '';
+        shootCooldown = 0; passCooldown = 0;
+        tacticActive = 0; tacticType = 0; tacticDisplay = '';
+        player.maxSpeed = 9;
+        enemy.maxSpeed = 7;
+        resetPositions();
+    }
+
+    // ============================================
+    //  KẾT THÚC TRẬN
+    // ============================================
+    function endMatch() {
+        if (matchEnded) return;
+        matchEnded = true;
+
+        if (currentMode === 'ranked') {
+            if (scoreRed > scoreBlue) {
+                // Thắng
+                const gain = 20 + Math.floor(Math.random() * 10);
+                playerData.elo += gain;
+                playerData.wins++;
+                saveData(playerData);
+                goalMessage = '🏆 BẠN THẮNG! +' + gain + ' ELO';
+            } else if (scoreRed < scoreBlue) {
+                // Thua
+                const loss = 15 + Math.floor(Math.random() * 10);
+                playerData.elo = Math.max(0, playerData.elo - loss);
+                playerData.losses++;
+                saveData(playerData);
+                goalMessage = '💔 BẠN THUA! -' + loss + ' ELO';
+            } else {
+                playerData.wins++;
+                saveData(playerData);
+                goalMessage = '🤝 HÒA! Không đổi ELO';
+            }
+            updateMenuUI();
+
+            // Hiển thị thông báo sau 1.5s
+            setTimeout(() => {
+                alert(goalMessage + '\n\nELO hiện tại: ' + playerData.elo + ' (' + getRankFromElo(playerData.elo).name + ')');
+                backToMenu();
+            }, 800);
+        } else {
+            // Normal/online: chỉ thông báo
+            goalMessage = scoreRed > scoreBlue ? '🔴 ĐỘI ĐỎ THẮNG!' :
+                          scoreBlue > scoreRed ? '🔵 ĐỘI XANH THẮNG!' : '🤝 HÒA!';
+            setTimeout(() => {
+                alert('Kết thúc trận đấu!\n' + goalMessage);
+                backToMenu();
+            }, 800);
+        }
+    }
+
+    // ============================================
+    //  HÀNH ĐỘNG
+    // ============================================
+    function doShoot() {
+        if (shootCooldown > 0 || matchEnded) return;
+        const dx = ball.x - player.x, dy = ball.y - player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > player.radius + ball.radius + 12) return;
+
+        let dirX = player.vx, dirY = player.vy;
+        if (Math.hypot(dirX, dirY) < 0.5) { dirX = 1; dirY = 0; }
+        const len = Math.hypot(dirX, dirY);
+        dirX /= len; dirY /= len;
+
+        const power = 22;
+        ball.vx = dirX * power;
+        ball.vy = dirY * power;
+        ball.x += dirX * 3;
+        ball.y += dirY * 3;
+        shootCooldown = 25;
+    }
+
+    function doPass() {
+        if (passCooldown > 0 || matchEnded) return;
+        const dx = ball.x - player.x, dy = ball.y - player.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > player.radius + ball.radius + 15) return;
+
+        let dirX = player.vx, dirY = player.vy;
+        if (Math.hypot(dirX, dirY) < 0.5) { dirX = 1; dirY = 0; }
+        const len = Math.hypot(dirX, dirY);
+        dirX /= len; dirY /= len;
+
+        const power = 14;
+        ball.vx = dirX * power;
+        ball.vy = dirY * power;
+        ball.x += dirX * (player.radius + ball.radius + 2);
+        ball.y += dirY * (player.radius + ball.radius + 2);
+        passCooldown = 18;
+    }
+
+    function doTactic() {
+        if (matchEnded) return;
+        tacticType = (tacticType + 1) % 3;
+        tacticActive = 180;
+        if (tacticType === 1) {
+            player.maxSpeed = 7; enemy.maxSpeed = 5;
+            tacticDisplay = '🛡️ PHÒNG THỦ';
+        } else if (tacticType === 2) {
+            player.maxSpeed = 12; enemy.maxSpeed = 8;
+            tacticDisplay = '⚡ TẤN CÔNG';
+        } else {
+            player.maxSpeed = 9; enemy.maxSpeed = 7;
+            tacticDisplay = '⚖️ CÂN BẰNG';
+        }
+    }
+
+    // ============================================
+    //  AI
+    // ============================================
+    function updateAI() {
+        const dx = ball.x - enemy.x;
+        const dy = ball.y - enemy.y;
+        const distToBall = Math.hypot(dx, dy);
+
+        if (distToBall < enemy.radius + ball.radius + 8) {
+            const awayX = -dx / (distToBall || 1);
+            const awayY = -dy / (distToBall || 1);
+            enemy.vx += awayX * 0.6;
+            enemy.vy += awayY * 0.6;
+        } else {
+            const targetX = ball.x - (dx > 0 ? 25 : -25);
+            const targetY = ball.y;
+            const tdx = targetX - enemy.x, tdy = targetY - enemy.y;
+            const tdist = Math.hypot(tdx, tdy);
+            if (tdist > 5) {
+                enemy.vx += (tdx/tdist) * 0.9;
+                enemy.vy += (tdy/tdist) * 0.9;
+            }
+        }
+        limitSpeed(enemy, enemy.maxSpeed);
+    }
+
+    // ============================================
+    //  UPDATE
+    // ============================================
+    function update() {
+        if (matchEnded) return;
+
+        if (shootCooldown > 0) shootCooldown--;
+        if (passCooldown > 0) passCooldown--;
+        if (tacticActive > 0) {
+            tacticActive--;
+            if (tacticActive === 0) {
+                tacticType = 0;
+                player.maxSpeed = 9;
+                enemy.maxSpeed = 7;
+                tacticDisplay = '';
+            }
+        }
+
+        if (goalCooldown > 0) {
+            goalCooldown--;
+            if (goalCooldown === 0) {
+                // Kiểm tra kết thúc trận khi hết cooldown sau bàn thắng
+                if (scoreRed >= 3 || scoreBlue >= 3) {
+                    endMatch();
+                }
+            }
+            return;
+        }
+
+        const accel = 0.9;
+        if (deviceMode === 'pc') {
+            if (keys.w || keys.arrowup)    player.vy -= accel;
+            if (keys.s || keys.arrowdown)  player.vy += accel;
+            if (keys.a || keys.arrowleft)  player.vx -= accel;
+            if (keys.d || keys.arrowright) player.vx += accel;
+        } else {
+            // Mobile: chạy chậm như Roblox
+            if (joystickActive) {
+                player.vx += joystickVector.x * accel * MOBILE_SPEED_MULT * 1.4;
+                player.vy += joystickVector.y * accel * MOBILE_SPEED_MULT * 1.4;
+            }
+        }
+
+        if (sprintHeld && tacticType !== 1) {
+            limitSpeed(player, player.maxSpeed + 4);
+        } else {
+            limitSpeed(player, player.maxSpeed);
+        }
+
+        updateAI();
+
+        updatePhysics(player, player.friction, player.maxSpeed + 4);
+        updatePhysics(enemy, enemy.friction, enemy.maxSpeed);
+        updatePhysics(ball, ball.friction, ball.maxSpeed);
+
+        [player, enemy, ball].forEach(obj => {
+            if (obj.y - obj.radius < TOP)    { obj.y = TOP + obj.radius;    obj.vy *= -0.5; }
+            if (obj.y + obj.radius > BOTTOM) { obj.y = BOTTOM - obj.radius; obj.vy *= -0.5; }
+            const inGoalY = (obj.y > GOAL_TOP + obj.radius && obj.y < GOAL_BOTTOM - obj.radius);
+            if (obj.x - obj.radius < LEFT) {
+                if (!inGoalY) { obj.x = LEFT + obj.radius; obj.vx *= -0.5; }
+                else if (obj.x - obj.radius < LEFT - GOAL_DEPTH) { obj.x = LEFT - GOAL_DEPTH + obj.radius; obj.vx *= -0.5; }
+            }
+            if (obj.x + obj.radius > RIGHT) {
+                if (!inGoalY) { obj.x = RIGHT - obj.radius; obj.vx *= -0.5; }
+                else if (obj.x + obj.radius > RIGHT + GOAL_DEPTH) { obj.x = RIGHT + GOAL_DEPTH - obj.radius; obj.vx *= -0.5; }
+            }
+        });
+
+        resolveCollision(player, ball, 0.85);
+        resolveCollision(enemy, ball, 0.85);
+        resolveCollision(player, enemy, 0.7);
+
+        // Goal check
+        const inGoalY = (ball.y > GOAL_TOP && ball.y < GOAL_BOTTOM);
+        if (ball.x < LEFT - 2 && inGoalY) {
+            scoreBlue++; scoreDisplay.textContent = `${scoreRed} - ${scoreBlue}`;
+            goalMessage = '🔵 ĐỘI XANH GHI BÀN!';
+            goalCooldown = 60;
+            resetPositions();
+        } else if (ball.x > RIGHT + 2 && inGoalY) {
+            scoreRed++; scoreDisplay.textContent = `${scoreRed} - ${scoreBlue}`;
+            goalMessage = '🔴 ĐỘI ĐỎ GHI BÀN!';
+            goalCooldown = 60;
+            resetPositions();
+        }
+    }
+
+    // ============================================
+    //  DRAW
+    // ============================================
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.fillStyle = '#2d5a3b';
+        ctx.fillRect(LEFT, TOP, RIGHT-LEFT, BOTTOM-TOP);
+
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.globalAlpha = 0.4;
+        ctx.beginPath(); ctx.moveTo(W/2, TOP); ctx.lineTo(W/2, BOTTOM); ctx.stroke();
+        ctx.beginPath(); ctx.arc(W/2, H/2, 70, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeRect(LEFT, H/2-100, 120, 200);
+        ctx.strokeRect(RIGHT-120, H/2-100, 120, 200);
+
+        ctx.globalAlpha = 0.9; ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(LEFT-GOAL_DEPTH, GOAL_TOP, GOAL_DEPTH, GOAL_WIDTH);
+        ctx.fillRect(RIGHT, GOAL_TOP, GOAL_DEPTH, GOAL_WIDTH);
+
+        ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
+        for (let i = 0; i < GOAL_WIDTH; i += 10) {
+            ctx.beginPath(); ctx.moveTo(LEFT-GOAL_DEPTH, GOAL_TOP+i); ctx.lineTo(LEFT, GOAL_TOP+i); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(RIGHT, GOAL_TOP+i); ctx.lineTo(RIGHT+GOAL_DEPTH, GOAL_TOP+i); ctx.stroke();
+        }
+        for (let i = 0; i < GOAL_DEPTH; i += 10) {
+            ctx.beginPath(); ctx.moveTo(LEFT-GOAL_DEPTH+i, GOAL_TOP); ctx.lineTo(LEFT-GOAL_DEPTH+i, GOAL_BOTTOM); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(RIGHT+i, GOAL_TOP); ctx.lineTo(RIGHT+i, GOAL_BOTTOM); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Bóng
+        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2);
+        ctx.fillStyle = ball.color; ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(ball.x-3, ball.y-3, 4, 0, Math.PI*2);
+        ctx.fillStyle = '#d4ac0d'; ctx.fill();
+
+        // Player
+        ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
+        ctx.fillStyle = player.color; ctx.fill();
+        ctx.strokeStyle = '#a93226'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.beginPath(); ctx.arc(player.x-6, player.y-5, 4, 0, Math.PI*2); ctx.fillStyle = 'white'; ctx.fill();
+        ctx.beginPath(); ctx.arc(player.x+6, player.y-5, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(player.x-6, player.y-5, 2, 0, Math.PI*2); ctx.fillStyle = 'black'; ctx.fill();
+        ctx.beginPath(); ctx.arc(player.x+6, player.y-5, 2, 0, Math.PI*2); ctx.fill();
+
+        // Enemy
+        ctx.beginPath(); ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI*2);
+        ctx.fillStyle = enemy.color; ctx.fill();
+        ctx.strokeStyle = '#1f618d'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.beginPath(); ctx.arc(enemy.x-6, enemy.y-5, 4, 0, Math.PI*2); ctx.fillStyle = 'white'; ctx.fill();
+        ctx.beginPath(); ctx.arc(enemy.x+6, enemy.y-5, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(enemy.x-6, enemy.y-5, 2, 0, Math.PI*2); ctx.fillStyle = 'black'; ctx.fill();
+        ctx.beginPath(); ctx.arc(enemy.x+6, enemy.y-5, 2, 0, Math.PI*2); ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Hiển thị tên HLV trên đầu player
+        if (playerData.coachName) {
+            ctx.font = 'bold 12px "Segoe UI"';
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.textAlign = 'center';
+            ctx.fillText(playerData.coachName, player.x, player.y - player.radius - 8);
+        }
+
+        // Hiển thị chiến thuật
+        if (tacticActive > 0 && tacticDisplay) {
+            ctx.font = 'bold 24px "Segoe UI"';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.shadowColor = 'black'; ctx.shadowBlur = 8;
+            ctx.textAlign = 'center';
+            ctx.fillText(tacticDisplay, W/2, 50);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(W/2 - 80, 60, 160, 6);
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(W/2 - 80, 60, 160 * (tacticActive/180), 6);
+        }
+
+        if (goalCooldown > 0 || matchEnded) {
+            ctx.font = 'bold 48px "Segoe UI"';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.shadowColor = 'black'; ctx.shadowBlur = 15; ctx.textAlign = 'center';
+            ctx.fillText(goalMessage, W/2, H/2 - 60);
+            ctx.shadowBlur = 0;
+        }
+
+        // Tên đội + rank
+        ctx.font = 'bold 18px "Segoe UI"';
+        ctx.fillStyle = '#ecf0f1'; ctx.shadowColor = 'black'; ctx.shadowBlur = 5;
+        ctx.textAlign = 'center';
+        ctx.fillText('ĐỎ', 120, 70);
+        ctx.fillText(currentMode === 'ranked' ? 'BOT (' + getRankFromElo(playerData.elo).name + ')' : 'BOT', W-120, 70);
+        ctx.shadowBlur = 0;
+    }
+
+    // ============================================
+    //  GAME LOOP
+    // ============================================
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // ============================================
+    //  BẮT ĐẦU / KẾT THÚC GAME
+    // ============================================
+    function startGame() {
+        menuScreen.classList.remove('active');
+        gameWrapper.classList.add('active');
+
+        if (deviceMode === 'mobile') {
+            joystickZone.classList.add('active');
+            controlsHint.style.display = 'none';
+            noteText.textContent = '📱 Joystick di chuyển (chậm như Roblox) — Nút hành động bên phải';
+        } else {
+            joystickZone.classList.remove('active');
+            controlsHint.style.display = 'flex';
+            noteText.textContent = '⚽ WASD di chuyển — SPACE sút — E chuyền — Q chiến thuật';
+        }
+
+        // Cài đặt theo chế độ
+        if (currentMode === 'ranked') {
+            // Bot rank theo elo người chơi
+            const botElo = Math.max(0, playerData.elo + (Math.random()-0.5)*200);
+            const botRank = getRankFromElo(botElo);
+            opponentTag.textContent = 'vs ' + botRank.icon + ' ' + botRank.name;
+            // Bot mạnh hơn theo rank
+            const botDiff = Math.min(1, botElo / 2000);
+            enemy.maxSpeed = 6 + botDiff * 5; // 6 → 11
+        } else if (currentMode === 'online') {
+            opponentTag.textContent = 'vs NGƯỜI CHƠI';
+            enemy.maxSpeed = 8;
+        } else {
+            opponentTag.textContent = 'vs BOT';
+            enemy.maxSpeed = 7;
+        }
+
+        Object.keys(keys).forEach(k => keys[k] = false);
+        joystickActive = false;
+        joystickVector = { x:0, y:0 };
+        sprintHeld = false;
+        resetFullMatch();
+        updateScoreUI();
+    }
+
+    function updateScoreUI() {
+        scoreDisplay.textContent = `${scoreRed} - ${scoreBlue}`;
+    }
+
+    function backToMenu() {
+        gameWrapper.classList.remove('active');
+        menuScreen.classList.add('active');
+        joystickZone.classList.remove('active');
+        updateMenuUI();
+        opponentTag.textContent = '';
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        resetFullMatch();
+        updateScoreUI();
+    });
+    document.getElementById('backBtn').addEventListener('click', backToMenu);
+
+    // ============================================
+    //  BÀN PHÍM
+    // ============================================
+    window.addEventListener('keydown', e => {
+        const k = e.key.toLowerCase();
+        if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' '].includes(k)) e.preventDefault();
+        if (k === 'w' || k === 'arrowup')    keys.w = true;
+        if (k === 's' || k === 'arrowdown')  keys.s = true;
+        if (k === 'a' || k === 'arrowleft')  keys.a = true;
+        if (k === 'd' || k === 'arrowright') keys.d = true;
+        if (k === ' ') doShoot();
+        if (k === 'e') doPass();
+        if (k === 'q') doTactic();
+    });
+    window.addEventListener('keyup', e => {
+        const k = e.key.toLowerCase();
+        if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' '].includes(k)) e.preventDefault();
+        if (k === 'w' || k === 'arrowup')    keys.w = false;
+        if (k === 's' || k === 'arrowdown')  keys.s = false;
+        if (k === 'a' || k === 'arrowleft')  keys.a = false;
+        if (k === 'd' || k === 'arrowright') keys.d = false;
+    });
+    window.addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); });
+
+    // ============================================
+    //  JOYSTICK
+    // ============================================
+    let touchId = null;
+
+    function updateJoystick(clientX, clientY) {
+        const rect = joystickBase.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+        let dx = clientX - cx, dy = clientY - cy;
+        const maxDist = rect.width/2 - 10;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxDist) { dx = (dx/dist)*maxDist; dy = (dy/dist)*maxDist; }
+        joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        joystickVector.x = dx / maxDist;
+        joystickVector.y = dy / maxDist;
+        if (Math.hypot(joystickVector.x, joystickVector.y) < 0.15) {
+            joystickVector.x = 0; joystickVector.y = 0;
+        }
+    }
+
+    function resetJoystick() {
+        joystickKnob.style.transform = 'translate(-50%, -50%)';
+        joystickVector.x = 0; joystickVector.y = 0;
+        joystickActive = false;
+        touchId = null;
+    }
+
+    joystickBase.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (touchId !== null) return;
+        const t = e.changedTouches[0];
+        touchId = t.identifier;
+        joystickActive = true;
+        updateJoystick(t.clientX, t.clientY);
+    }, { passive:false });
+    joystickBase.addEventListener('touchmove', e => {
+        e.preventDefault();
+        for (const t of e.changedTouches) {
+            if (t.identifier === touchId) updateJoystick(t.clientX, t.clientY);
+        }
+    }, { passive:false });
+    joystickBase.addEventListener('touchend', e => {
+        e.preventDefault();
+        for (const t of e.changedTouches) {
+            if (t.identifier === touchId) resetJoystick();
+        }
+    }, { passive:false });
+    joystickBase.addEventListener('touchcancel', e => { e.preventDefault(); resetJoystick(); }, { passive:false });
+
+    sprintBtn.addEventListener('touchstart', e => { e.preventDefault(); sprintHeld = true; }, { passive:false });
+    sprintBtn.addEventListener('touchend',   e => { e.preventDefault(); sprintHeld = false; }, { passive:false });
+    sprintBtn.addEventListener('touchcancel',e => { e.preventDefault(); sprintHeld = false; }, { passive:false });
+    shootBtn.addEventListener('touchstart', e => { e.preventDefault(); doShoot(); }, { passive:false });
+    passBtn.addEventListener('touchstart',  e => { e.preventDefault(); doPass(); }, { passive:false });
+    tacticBtn.addEventListener('touchstart',e => { e.preventDefault(); doTactic(); }, { passive:false });
+
+    // ============================================
+    //  KHỞI ĐỘNG
+    // ============================================
+    gameLoop();
+
+})();
+</script>
+</body>
+</html>
